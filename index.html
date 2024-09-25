@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real Madrid Soccer Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #66ccff; /* Sky blue background */
+        }
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: #007f00; /* Green field */
+            border: 2px solid #000;
+        }
+        #symbol {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Add the image symbol to the top-right corner -->
+    <img id="symbol" src="symbol.png" alt="Symbol">
+
+    <!-- Canvas for the game -->
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // Set up the canvas
+        const canvas = document.getElementById('gameCanvas');
+        const context = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Array of player image sources
+        const playerImageSources = ['player.jpg', 'player1.jpg', 'player3.jpg'];
+        const playerImages = [];
+        const viniCryImage = new Image();
+        viniCryImage.src = 'vini cry.jpg';
+
+        // Load player images
+        let imagesToLoad = playerImageSources.length;
+        let imagesLoaded = 0;
+
+        playerImageSources.forEach(src => {
+            const img = new Image();
+            img.src = src;
+            img.onload = () => {
+                imagesLoaded++;
+                playerImages.push(img);
+                checkAllImagesLoaded();
+            };
+            img.onerror = () => {
+                console.error('Failed to load image:', src);
+                imagesToLoad--;
+                checkAllImagesLoaded();
+            };
+        });
+
+        function checkAllImagesLoaded() {
+            if (imagesLoaded === imagesToLoad) {
+                if (playerImages.length > 0) {
+                    // Start the game after all images are loaded
+                    initGame();
+                } else {
+                    console.error('No images loaded successfully. Cannot start the game.');
+                }
+            }
+        }
+
+        // Player positions and velocities
+        const players = [];
+
+        // Score variable
+        let score = 0;
+
+        function initGame() {
+            // Generate random player positions and velocities
+            for (let i = 0; i < 5; i++) {
+                const randomImage = playerImages[Math.floor(Math.random() * playerImages.length)];
+                players.push({
+                    x: Math.random() * (canvas.width - 100),
+                    y: Math.random() * (canvas.height - 150),
+                    width: 100,
+                    height: 150,
+                    dx: (Math.random() - 0.5) * 4,
+                    dy: (Math.random() - 0.5) * 4,
+                    rotation: 0,
+                    isFallen: false,
+                    image: randomImage
+                });
+            }
+
+            draw();
+        }
+
+        function draw() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            players.forEach((player, index) => {
+                if (!player.isFallen) {
+                    player.x += player.dx;
+                    player.y += player.dy;
+                    if (player.x <= 0 || player.x + player.width >= canvas.width) {
+                        player.dx *= -1;
+                    }
+                    if (player.y <= 0 || player.y + player.height >= canvas.height) {
+                        player.dy *= -1;
+                    }
+                }
+                context.save();
+                context.translate(player.x + player.width / 2, player.y + player.height / 2);
+                context.rotate(player.rotation * Math.PI / 180);
+                context.drawImage(player.image, -player.width / 2, -player.height / 2, player.width, player.height);
+                context.restore();
+            });
+
+            // Check for player collisions
+            checkCollisions();
+
+            context.fillStyle = 'white';
+            context.font = '24px Arial';
+            context.fillText('Score: ' + score, 20, 30);
+
+            requestAnimationFrame(draw);
+        }
+
+        // Function to check collisions between players
+        function checkCollisions() {
+            for (let i = 0; i < players.length; i++) {
+                for (let j = i + 1; j < players.length; j++) {
+                    if (!players[i].isFallen && !players[j].isFallen) {
+                        if (isColliding(players[i], players[j])) {
+                            // Play the sound only once when any players collide
+                            playPenaltySound();
+
+                            // Make both players fall when they collide
+                            playerFall(players[i]);
+                            playerFall(players[j]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Collision detection function
+        function isColliding(playerA, playerB) {
+            return (
+                playerA.x < playerB.x + playerB.width &&
+                playerA.x + playerA.width > playerB.x &&
+                playerA.y < playerB.y + playerB.height &&
+                playerA.y + playerA.height > playerB.y
+            );
+        }
+
+        // Function to play the penalty sound (used for both collision and fall)
+        function playPenaltySound() {
+            const penaltySound = new Audio('Penalti a favor del real madrid.mp3');
+            penaltySound.play().catch(error => {
+                console.error('Error playing sound:', error);
+            });
+        }
+
+        // Function to handle player fall action (used for both click and collision)
+        function playerFall(player) {
+            // Change the player's image to 'vini cry'
+            player.image = viniCryImage;
+
+            // Make the player fall
+            player.isFallen = true;
+            player.rotation = 90;
+
+            // Stop the player's movement
+            player.dx = 0;
+            player.dy = 0;
+
+            // Increase the score
+            score += 1;
+        }
+
+        // Click event to change image and play sound
+        canvas.addEventListener('click', function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            players.forEach(player => {
+                if (
+                    mouseX >= player.x &&
+                    mouseX <= player.x + player.width &&
+                    mouseY >= player.y &&
+                    mouseY <= player.y + player.height &&
+                    !player.isFallen
+                ) {
+                    playPenaltySound(); // Play the sound when clicked
+                    playerFall(player); // Trigger the fall action when clicked
+                }
+            });
+        });
+
+        // Resize canvas on window resize
+        window.addEventListener('resize', function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
