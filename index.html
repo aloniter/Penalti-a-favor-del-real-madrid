@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real Madrid Soccer Game</title>
     <style>
         body {
@@ -183,11 +184,18 @@
             score += 1;
         }
 
-        // Click event to change image and play sound
-        canvas.addEventListener('click', function(event) {
+        // Function to handle both click and touch events
+        function handleInteraction(event) {
             const rect = canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
+            let mouseX, mouseY;
+
+            if (event.type === 'click') {
+                mouseX = event.clientX - rect.left;
+                mouseY = event.clientY - rect.top;
+            } else if (event.type === 'touchstart') {
+                mouseX = event.touches[0].clientX - rect.left;
+                mouseY = event.touches[0].clientY - rect.top;
+            }
 
             players.forEach(player => {
                 if (
@@ -197,11 +205,15 @@
                     mouseY <= player.y + player.height &&
                     !player.isFallen
                 ) {
-                    playPenaltySound(); // Play the sound when clicked
-                    playerFall(player); // Trigger the fall action when clicked
+                    playPenaltySound(); // Play the sound when clicked or touched
+                    playerFall(player); // Trigger the fall action when clicked or touched
                 }
             });
-        });
+        }
+
+        // Add event listeners for both mouse click and touch events
+        canvas.addEventListener('click', handleInteraction);
+        canvas.addEventListener('touchstart', handleInteraction);
 
         // Resize canvas on window resize
         window.addEventListener('resize', function() {
